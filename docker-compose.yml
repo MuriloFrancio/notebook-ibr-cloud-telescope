@@ -9,6 +9,4 @@ services:
       - ./notebooks:/home/jovyan/work/notebooks
       - ./scripts:/home/jovyan/work/scripts
       - ./data:/home/jovyan/work/data
-    env_file:
-      - .env
     command: start-notebook.py --ServerApp.token= --ServerApp.password=
