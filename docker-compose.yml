@@ -1,0 +1,14 @@
+services:
+  jupyter:
+    build: .
+    image: ibr-notebook:local
+    container_name: ibr-notebook
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work/notebooks
+      - ./scripts:/home/jovyan/work/scripts
+      - ./data:/home/jovyan/work/data
+    env_file:
+      - .env
+    command: start-notebook.py --ServerApp.token= --ServerApp.password=

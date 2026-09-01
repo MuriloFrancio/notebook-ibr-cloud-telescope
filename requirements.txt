@@ -1,0 +1,8 @@
+pandas
+matplotlib
+plotly
+scapy
+python-dotenv
+tqdm
+folium
+geoip2
