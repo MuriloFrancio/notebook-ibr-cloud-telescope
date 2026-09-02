@@ -2,11 +2,19 @@ from zipfile import ZipFile
 from pathlib import Path
 import pandas as pd
 import re
+import os
 
-ZIP_PATH = Path("../data/raw/cloud_telescope_raw_dataset_3.zip")
-OUTPUT = Path("../data/index/indice_dataset3.csv")
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
 
-OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+ZIP_PATH = Path(
+    os.getenv(
+        "DATASET_ZIP_PATH",
+        PROJECT_ROOT / "data/raw/cloud_telescope_raw_dataset_3.zip"
+    )
+)
+
+OUTPUT = PROJECT_ROOT / "data/index/indice_dataset3.csv"
 
 def extrair_regiao(nome_arquivo):
     """

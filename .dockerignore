@@ -1,0 +1,15 @@
+.env
+.env.*
+
+data/raw/
+data/staging/
+data/processed/
+
+*.zip
+*.pcap
+*.pcap.gz
+*.csv.gz
+
+.git/
+.ipynb_checkpoints/
+__pycache__/

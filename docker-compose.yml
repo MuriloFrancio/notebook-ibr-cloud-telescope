@@ -1,12 +1,23 @@
 services:
   jupyter:
     build: .
-    image: ibr-notebook:local
+    image: murilofrancio770/ibr-notebook:latest
     container_name: ibr-notebook
     ports:
       - "8888:8888"
+
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
     volumes:
-      - ./notebooks:/home/jovyan/work/notebooks
-      - ./scripts:/home/jovyan/work/scripts
-      - ./data:/home/jovyan/work/data
-    command: start-notebook.py --ServerApp.token= --ServerApp.password=
+      - ./notebooks:/home/jovyan/ibr-notebook/notebooks
+      - ./scripts:/home/jovyan/ibr-notebook/scripts
+      - ./data:/home/jovyan/ibr-notebook/data
+      - ${DATASET_DIR:-./data/raw}:/home/jovyan/dataset:ro
+
+    environment:
+      DATASET_ZIP_PASSWORD: ${DATASET_ZIP_PASSWORD:-}
+      DATASET_ZIP_PATH: /home/jovyan/dataset/cloud_telescope_raw_dataset_3.zip
+
+    command: start-notebook.py --ServerApp.root_dir=/home/jovyan/ibr-notebook --ServerApp.token= --ServerApp.password=

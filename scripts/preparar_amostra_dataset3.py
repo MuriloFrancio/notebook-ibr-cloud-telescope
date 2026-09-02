@@ -1,64 +1,55 @@
 from pathlib import Path
+import os
+import getpass
 import pandas as pd
 import subprocess
-import getpass
-import os
 import shutil
+import random
 
-# =========================
-# CONFIGURAÇÕES
-# =========================
+script_dir = Path(__file__).resolve().parent
+project_root = script_dir.parent
 
-ZIP_PATH = Path("../data/raw/cloud_telescope_raw_dataset_3.zip")
-INDEX_PATH = Path("../data/index/indice_dataset3.csv")
+zip_path = Path(
+    os.getenv(
+        "DATASET_ZIP_PATH",
+        str(project_root / "data/raw/cloud_telescope_raw_dataset_3.zip")
+    ).strip().strip('"')
+)
 
-STAGING_DIR = Path("../data/staging")
-OUTPUT_CSV = Path("../data/processed/dataset3_amostra.csv.gz")
+index_path = project_root / "data/index/indice_dataset3.csv"
+staging_dir = project_root / "data/staging"
+output_csv = project_root / "data/processed/dataset3_amostra.csv.gz"
 
-PACOTES_POR_ARQUIVO = 10000
+seven_zip = shutil.which("7z") or r"C:\Program Files\7-Zip\7z.exe"
+tshark = shutil.which("tshark") or r"D:\Wireshark\tshark.exe"
 
-# Comece com uma região. Depois teste "uma_por_regiao".
-MODO = "uma_por_regiao"  # opções: "uma_regiao" ou "uma_por_regiao"
-REGIAO_ESCOLHIDA = "af-south-1"
+zip_password = os.getenv("DATASET_ZIP_PASSWORD", "").strip().strip('"')
+pacotes_por_arquivo = int(os.getenv("PACOTES_POR_ARQUIVO", "10000"))
 
-SEVEN_ZIP = shutil.which("7z") or r"C:\Program Files\7-Zip\7z.exe"
-TSHARK = shutil.which("tshark") or r"D:\Wireshark\tshark.exe"
+if not zip_password:
+    zip_password = getpass.getpass("Digite a senha do ZIP do Dataset 3: ")
 
-# =========================
-# SENHA DO ZIP
-# =========================
+if not zip_path.exists():
+    raise FileNotFoundError(f"Dataset não encontrado em: {zip_path}")
 
-ZIP_PASSWORD = os.getenv("DATASET_ZIP_PASSWORD")
+if not index_path.exists():
+    raise FileNotFoundError(f"Índice não encontrado em: {index_path}")
 
-if not ZIP_PASSWORD:
-    ZIP_PASSWORD = getpass.getpass("Digite a senha do ZIP do Dataset 3: ")
+if not Path(seven_zip).exists():
+    raise FileNotFoundError(f"7-Zip não encontrado em: {seven_zip}")
 
-if not ZIP_PASSWORD:
-    ZIP_PASSWORD = getpass.getpass("Digite a senha do ZIP do Dataset 3: ")
-
-# =========================
-# VALIDAÇÕES
-# =========================
-
-if not Path(SEVEN_ZIP).exists():
-    raise FileNotFoundError(f"7-Zip não encontrado em: {SEVEN_ZIP}")
-
-if not Path(TSHARK).exists():
+if not Path(tshark).exists():
     raise FileNotFoundError(
-        f"tshark não encontrado em: {TSHARK}\n"
-        "Instale o Wireshark ou ajuste o caminho da variável TSHARK."
+        f"tshark não encontrado em: {tshark}\n"
+        "Instale o Wireshark ou ajuste o caminho do tshark."
     )
 
-STAGING_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
-
-# =========================
-# FUNÇÕES
-# =========================
+staging_dir.mkdir(parents=True, exist_ok=True)
+output_csv.parent.mkdir(parents=True, exist_ok=True)
 
 def extrair_com_7zip(zip_path, arquivo_interno, destino_dir, senha):
     cmd = [
-        SEVEN_ZIP,
+        seven_zip,
         "x",
         str(zip_path),
         arquivo_interno,
@@ -71,10 +62,9 @@ def extrair_com_7zip(zip_path, arquivo_interno, destino_dir, senha):
 
     return destino_dir / Path(arquivo_interno)
 
-
 def converter_pcap_para_csv(pcap_path, csv_path, limite_pacotes):
     cmd = [
-        TSHARK,
+        tshark,
         "-r", str(pcap_path),
         "-c", str(limite_pacotes),
         "-T", "fields",
@@ -92,40 +82,71 @@ def converter_pcap_para_csv(pcap_path, csv_path, limite_pacotes):
         "-e", "icmp.type"
     ]
 
-    with open(csv_path, "w", encoding="utf-8") as f:
-        subprocess.run(cmd, stdout=f, check=True)
+    with open(csv_path, "w", encoding="utf-8") as arquivo_saida:
+        subprocess.run(cmd, stdout=arquivo_saida, check=True)
 
+def escolher_arquivos(df_index):
+    regioes = sorted(df_index["regiao"].dropna().unique())
 
-# =========================
-# SELEÇÃO DOS ARQUIVOS
-# =========================
+    print("\nRegiões disponíveis:")
+    for regiao in regioes:
+        print(f"- {regiao}")
 
-df_index = pd.read_csv(INDEX_PATH)
+    print("\nEscolha o tipo de amostra:")
+    print("1 - Uma amostra de todas as regiões")
+    print("2 - Uma amostra de uma região específica")
+    print("3 - Uma amostra de uma região aleatória")
 
-if MODO == "uma_regiao":
-    selecionados = (
-        df_index[df_index["regiao"] == REGIAO_ESCOLHIDA]
-        .head(1)
-    )
+    opcao = input("\nDigite a opção desejada: ").strip()
 
-elif MODO == "uma_por_regiao":
-    selecionados = (
-        df_index
-        .dropna(subset=["regiao"])
-        .sort_values(["regiao", "nome_arquivo"])
-        .groupby("regiao")
-        .head(1)
-    )
+    if opcao == "1":
+        selecionados = (
+            df_index
+            .dropna(subset=["regiao"])
+            .sort_values(["regiao", "nome_arquivo"])
+            .groupby("regiao")
+            .head(1)
+        )
 
-else:
-    raise ValueError("Modo inválido. Use 'uma_regiao' ou 'uma_por_regiao'.")
+        return selecionados
 
-print("Arquivos selecionados:")
+    if opcao == "2":
+        regiao_escolhida = input("\nDigite a região desejada, exemplo eu-central-1: ").strip()
+
+        if regiao_escolhida not in regioes:
+            raise ValueError(f"Região inválida: {regiao_escolhida}")
+
+        selecionados = (
+            df_index[df_index["regiao"] == regiao_escolhida]
+            .sort_values("nome_arquivo")
+            .head(1)
+        )
+
+        return selecionados
+
+    if opcao == "3":
+        regiao_aleatoria = random.choice(regioes)
+
+        print(f"\nRegião aleatória escolhida: {regiao_aleatoria}")
+
+        selecionados = (
+            df_index[df_index["regiao"] == regiao_aleatoria]
+            .sample(n=1, random_state=None)
+        )
+
+        return selecionados
+
+    raise ValueError("Opção inválida. Use 1, 2 ou 3.")
+
+df_index = pd.read_csv(index_path)
+
+selecionados = escolher_arquivos(df_index)
+
+if selecionados.empty:
+    raise ValueError("Nenhum arquivo foi selecionado para gerar a amostra.")
+
+print("\nArquivos selecionados:")
 print(selecionados[["regiao", "ip_sensor", "nome_arquivo"]])
-
-# =========================
-# EXTRAÇÃO + CONVERSÃO
-# =========================
 
 dataframes = []
 
@@ -135,22 +156,22 @@ for _, row in selecionados.iterrows():
     print(f"\nExtraindo com 7-Zip: {arquivo_interno}")
 
     pcap_local = extrair_com_7zip(
-        ZIP_PATH,
+        zip_path,
         arquivo_interno,
-        STAGING_DIR,
-        ZIP_PASSWORD
+        staging_dir,
+        zip_password
     )
 
     print(f"Arquivo extraído: {pcap_local}")
 
-    csv_temp = STAGING_DIR / f"{Path(arquivo_interno).name}.csv"
+    csv_temp = staging_dir / f"{Path(arquivo_interno).name}.csv"
 
     print(f"Convertendo para CSV com tshark: {csv_temp}")
 
     converter_pcap_para_csv(
         pcap_local,
         csv_temp,
-        PACOTES_POR_ARQUIVO
+        pacotes_por_arquivo
     )
 
     df_temp = pd.read_csv(csv_temp)
@@ -161,15 +182,11 @@ for _, row in selecionados.iterrows():
 
     dataframes.append(df_temp)
 
-# =========================
-# CSV FINAL
-# =========================
-
 df_final = pd.concat(dataframes, ignore_index=True)
 
-df_final.to_csv(OUTPUT_CSV, index=False)
+df_final.to_csv(output_csv, index=False)
 
 print("\nCSV final gerado com sucesso!")
-print(f"Arquivo: {OUTPUT_CSV}")
+print(f"Arquivo: {output_csv}")
 print(f"Total de linhas: {len(df_final)}")
 print(df_final.head())
