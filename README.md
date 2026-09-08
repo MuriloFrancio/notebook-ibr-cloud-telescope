@@ -23,7 +23,7 @@ esse modo não é necessário baixar o repositório do github.
 Execute:
 
 ```powershell
-docker run --rm -it -p 8888:8888 --cap-add NET_RAW --cap-add NET_ADMIN murilofrancio770/ibr-notebook:latest
+docker run -d --name ibr-notebook -p 8888:8888 --cap-add NET_RAW --cap-add NET_ADMIN murilofrancio770/ibr-notebook:latest
 ```
 Esse comando baixa a imagem, inicia o Jupyter Notebook na porta 8888 e libera permissões de rede para ferramentas como tcpdump
 
