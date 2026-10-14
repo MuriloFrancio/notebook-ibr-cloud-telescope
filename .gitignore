@@ -1,9 +1,34 @@
+# Configuração local
 .env
 
-data/raw/
-data/staging/
-data/processed/
+# Dataset
+data/
+dataset/
+*.zip
+*.pcap
+*.pcap.gz
 
-__pycache__/
+# Resultados
+resultados/
+*.csv
+*.csv.gz
+
+# Arquivos de bibliotecas
+bibliotecas/geoip/
+*.mmdb
+
+# usuario não precisa
+jupyterlab_autostart/
+quiz_package/
+tools/
+
+# Dockerfile
+*Dockerfile
+
+# Jupyter
 .ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Python
+__pycache__/
 *.pyc
