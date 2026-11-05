@@ -1,6 +1,10 @@
 @echo off
+setlocal
+
+cd /d "%~dp0"
+
 echo ============================================
-echo IBR Notebook - Execucao com Dataset 3
+echo Cloud Telescope Lab - Dataset 3
 echo ============================================
 echo.
 
@@ -12,7 +16,7 @@ if not exist "%DATASET_DIR%\cloud_telescope_raw_dataset_3.zip" (
     echo ERRO: O arquivo cloud_telescope_raw_dataset_3.zip nao foi encontrado em:
     echo %DATASET_DIR%
     echo.
-    echo Verifique se voce informou a PASTA correta, nao o arquivo ZIP.
+    echo Informe a PASTA onde o arquivo ZIP esta localizado.
     pause
     exit /b 1
 )
@@ -22,15 +26,25 @@ if not exist "%CD%\resultados" (
 )
 
 echo.
-echo Iniciando ambiente...
+echo Atualizando imagem Docker...
+docker pull murilofrancio770/ibr-notebook:latest
+
+if errorlevel 1 (
+    echo.
+    echo ERRO: Nao foi possivel obter a imagem Docker.
+    pause
+    exit /b 1
+)
+
+echo.
+echo Iniciando Cloud Telescope Lab...
 echo.
 
 docker run --rm -it ^
+    --name ibr-notebook ^
     -p 8888:8888 ^
     --cap-add NET_RAW ^
     --cap-add NET_ADMIN ^
-    -v "%CD%\notebooks:/home/jovyan/ibr-notebook/notebooks" ^
-    -v "%CD%\scripts:/home/jovyan/ibr-notebook/scripts" ^
     -v "%CD%\resultados:/home/jovyan/ibr-notebook/resultados" ^
     -v "%DATASET_DIR%:/home/jovyan/dataset:ro" ^
     -e "DATASET_ZIP_PASSWORD=%DATASET_ZIP_PASSWORD%" ^
